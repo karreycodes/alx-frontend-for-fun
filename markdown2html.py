@@ -3,6 +3,17 @@ import sys
 import os
 import markdown
 import hashlib
+import re
+
+def parse_md5(match):
+    content = match.group(1)
+    md5_hash = hashlib.md5(content.encode()).hexdigest()
+    return md5_hash
+
+def parse_removal(match):
+    content = match.group(1)
+    modified_content = re.sub(r'[cC]', '', content)
+    return modified_content
 
 if len(sys.argv) < 3:
     print("Usage: ./markdown2html.py <input_file> <output_file>", file=sys.stderr)
@@ -24,19 +35,10 @@ html = markdown.markdown(
 )
 
 # Parse custom syntax for MD5 conversion
-html = html.replace("[[", "<span class='md5'>").replace("]]", "</span>")
+html = re.sub(r"\[\[(.*?)\]\]", parse_md5, html)
 
 # Parse custom syntax for removing characters
-html = html.replace("((Hello Chicago))", "Hello hiago")
-html = html.replace("((hello chicago))", "hello hiago")
-
-# Calculate MD5 hash for text inside <span class='md5'> tags
-def md5_hash(match):
-    content = match.group(1)
-    md5_hash = hashlib.md5(content.encode()).hexdigest()
-    return md5_hash
-
-html = re.sub(r"<span class='md5'>(.*?)</span>", md5_hash, html)
+html = re.sub(r"\(\((.*?)\)\)", parse_removal, html, flags=re.IGNORECASE)
 
 with open(output_file, "w") as f:
     f.write(html)
